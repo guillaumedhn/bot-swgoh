@@ -218,54 +218,49 @@ Step1_DismissNews() {
 ; ============================================
 ;  STEP 2 — Open "Chargements" shop and buy 4 recurring items
 ; ============================================
-;  1. Find and click the "Chargements" entry on the main menu via ImageSearch
-;     (reference image: images/shipments.png).
+;  1. Verify the "Chargements" navigation icon by its sentinel color, then
+;     click it.
 ;  2. For each of the 4 item slots: check the sentinel color (= item is
-;     buyable), click the buy button, then click the purchase confirmation.
+;     buyable), click the buy button, click the shared purchase confirmation.
 ;     If the sentinel color doesn't match (already bought, locked, ...),
 ;     skip that slot silently.
 Step2_BuyShipments() {
     global colorTolerance
 
-    shipmentsImage := A_ScriptDir "\images\shipments.png"
+    ; --- Shipments navigation entry on the main menu ---
+    shipmentsX     := 1365
+    shipmentsY     := 394
+    shipmentsColor := 0xFFFFFF
+
+    ; --- Shared purchase confirmation popup button ---
+    ; TODO: capture with F1 in-game (same popup for all 4 items).
+    confirmX := 0
+    confirmY := 0
 
     ; --- Navigate to the shop ---
-    if (!FileExist(shipmentsImage))
+    if (!CompareColor(PixelGetColor(shipmentsX, shipmentsY), shipmentsColor, colorTolerance))
         return false
 
-    foundX := 0
-    foundY := 0
-    try {
-        if (!ImageSearch(&foundX, &foundY, 0, 0, A_ScreenWidth, A_ScreenHeight,
-                         "*30 " shipmentsImage))
-            return false
-    } catch {
-        return false
-    }
-
-    ClickPos(foundX, foundY, 1500)
+    ClickPos(shipmentsX, shipmentsY, 1500)
 
     ; --- Buy items ---
-    ; Each slot: { x, y, color, confirmX, confirmY }
-    ;   x, y       = buy button position
-    ;   color      = pixel color at (x, y) when the item is available
-    ;   confirmX/Y = position of the purchase confirmation button
-    ; TODO: capture these values with F1 in-game and fill them in.
+    ; Each slot: { x, y, color }
+    ;   x, y  = buy button position
+    ;   color = pixel color at (x, y) when the item is available
     items := [
-        { x: 0, y: 0, color: 0x000000, confirmX: 0, confirmY: 0 },
-        { x: 0, y: 0, color: 0x000000, confirmX: 0, confirmY: 0 },
-        { x: 0, y: 0, color: 0x000000, confirmX: 0, confirmY: 0 },
-        { x: 0, y: 0, color: 0x000000, confirmX: 0, confirmY: 0 },
+        { x: 1437, y: 849, color: 0xFEDD70 },
+        { x: 713,  y: 849, color: 0xFDD571 },
+        { x: 1070, y: 859, color: 0x201D18 },
+        { x: 2888, y: 497, color: 0xFFE778 },
     ]
 
     for item in items {
-        if (item.x = 0)
-            continue
         if (!CompareColor(PixelGetColor(item.x, item.y), item.color, colorTolerance))
             continue
 
         ClickPos(item.x, item.y, 700)
-        ClickPos(item.confirmX, item.confirmY, 1000)
+        if (confirmX != 0)
+            ClickPos(confirmX, confirmY, 1000)
     }
 
     return true
@@ -288,7 +283,7 @@ RunSequence() {
 
     ; --- STEP 2: Open Shipments shop and buy recurring items ---
     if (!Step2_BuyShipments())
-        StepFailed(2, "Could not open Shipments or shipments.png not found")
+        StepFailed(2, "Shipments icon not found on main menu (color mismatch)")
     NotifyDiscord("✅ Completed", "Step 2 executed successfully")
 
     ExitApp()
