@@ -113,15 +113,25 @@ TestNotification() {
 ; ============================================
 NotifyDiscord(title, message, color := 0x22c55e) {
     global webhookUrl
-    if (webhookUrl = "")
+    if (webhookUrl = "") {
+        ToolTip("⚠ WEBHOOK_URL is empty in my_bot.env")
+        SetTimer(() => ToolTip(), -3000)
         return
+    }
 
     json := '{"embeds":[{"title":"' title '","description":"' message '","color":' color '}]}'
     try {
         http := ComObject("WinHttp.WinHttpRequest.5.1")
-        http.Open("POST", webhookUrl, true)
+        http.Open("POST", webhookUrl, false)   ; false = synchronous
         http.SetRequestHeader("Content-Type", "application/json")
         http.Send(json)
+        if (http.Status < 200 || http.Status >= 300) {
+            ToolTip("Discord error " http.Status ": " http.ResponseText)
+            SetTimer(() => ToolTip(), -4000)
+        }
+    } catch Error as e {
+        ToolTip("Discord exception: " e.Message)
+        SetTimer(() => ToolTip(), -4000)
     }
 }
 
