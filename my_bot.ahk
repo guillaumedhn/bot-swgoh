@@ -7,55 +7,55 @@ A_CoordModePixel := "Screen"
 ; ============================================
 ;  CONFIGURATION
 ; ============================================
-cheminJeu        := "C:\Chemin\Complet\Vers\TonJeu.exe"
-titreFenetre     := "ahk_exe TonJeu.exe"
-webhookUrl       := "TON_WEBHOOK_DISCORD"
-timeoutLancement := 60        ; secondes max pour charger le jeu
-toleranceCouleur := 15
-modeAuto         := false     ; true = lance auto au démarrage du script
+gamePath        := "C:\Full\Path\To\YourGame.exe"
+windowTitle     := "ahk_exe YourGame.exe"
+webhookUrl      := "YOUR_DISCORD_WEBHOOK"
+launchTimeout   := 60        ; max seconds to load the game
+colorTolerance  := 15
+autoMode        := false     ; true = auto-launch on script startup
 
 ; ============================================
-;  RACCOURCIS
+;  HOTKEYS
 ; ============================================
-F1::OutilDebug()
-F6::LancerSequence()
-F7::ArretUrgence()
+F1::DebugTool()
+F6::RunSequence()
+F7::EmergencyStop()
 
-; Mode auto : déclenchement immédiat (utile pour controller.py et planificateur)
-if (modeAuto || A_Args.Length > 0) {
+; Auto mode: trigger immediately (useful for controller.py and scheduler)
+if (autoMode || A_Args.Length > 0) {
     Sleep(1000)
-    LancerSequence()
+    RunSequence()
 }
 
 ; ============================================
-;  OUTIL DEBUG (F1 = relevé position + couleur)
+;  DEBUG TOOL (F1 = capture position + color)
 ; ============================================
-OutilDebug() {
+DebugTool() {
     MouseGetPos(&x, &y)
-    couleur := PixelGetColor(x, y)
-    info := "Position: x:" x " y:" y "`nCouleur: " couleur
-    A_Clipboard := "x:" x " y:" y " couleur:" couleur
-    ToolTip(info "`n(copié)")
+    color := PixelGetColor(x, y)
+    info := "Position: x:" x " y:" y "`nColor: " color
+    A_Clipboard := "x:" x " y:" y " color:" color
+    ToolTip(info "`n(copied)")
     SetTimer(() => ToolTip(), -3000)
 }
 
 ; ============================================
-;  ARRÊT D'URGENCE
+;  EMERGENCY STOP
 ; ============================================
-ArretUrgence() {
-    NotifierDiscord("🛑 Arrêt manuel", "Bot stoppé par l'utilisateur (F7)", 0xef4444)
+EmergencyStop() {
+    NotifyDiscord("🛑 Manual stop", "Bot stopped by user (F7)", 0xef4444)
     ExitApp()
 }
 
 ; ============================================
 ;  HELPERS
 ; ============================================
-NotifierDiscord(titre, message, couleur := 0x22c55e) {
+NotifyDiscord(title, message, color := 0x22c55e) {
     global webhookUrl
-    if (webhookUrl = "TON_WEBHOOK_DISCORD")
+    if (webhookUrl = "YOUR_DISCORD_WEBHOOK")
         return
 
-    json := '{"embeds":[{"title":"' titre '","description":"' message '","color":' couleur '}]}'
+    json := '{"embeds":[{"title":"' title '","description":"' message '","color":' color '}]}'
     try {
         http := ComObject("WinHttp.WinHttpRequest.5.1")
         http.Open("POST", webhookUrl, true)
@@ -64,74 +64,74 @@ NotifierDiscord(titre, message, couleur := 0x22c55e) {
     }
 }
 
-ClicPos(x, y, pause := 300) {
+ClickPos(x, y, pause := 300) {
     Click(x, y)
     Sleep(pause)
 }
 
-EnvoyerTouche(touche, pause := 300) {
-    Send(touche)
+SendKey(key, pause := 300) {
+    Send(key)
     Sleep(pause)
 }
 
-ComparerCouleur(c1, c2, tol := 15) {
+CompareColor(c1, c2, tol := 15) {
     r1 := (c1 >> 16) & 0xFF, g1 := (c1 >> 8) & 0xFF, b1 := c1 & 0xFF
     r2 := (c2 >> 16) & 0xFF, g2 := (c2 >> 8) & 0xFF, b2 := c2 & 0xFF
     return (Abs(r1-r2) <= tol && Abs(g1-g2) <= tol && Abs(b1-b2) <= tol)
 }
 
-AttendreCouleur(x, y, couleurAttendue, timeout := 10000) {
-    debut := A_TickCount
-    while (A_TickCount - debut < timeout) {
-        if (ComparerCouleur(PixelGetColor(x, y), couleurAttendue, toleranceCouleur))
+WaitForColor(x, y, expectedColor, timeout := 10000) {
+    start := A_TickCount
+    while (A_TickCount - start < timeout) {
+        if (CompareColor(PixelGetColor(x, y), expectedColor, colorTolerance))
             return true
         Sleep(100)
     }
     return false
 }
 
-EchecEtape(numero, raison) {
-    NotifierDiscord("❌ Échec étape " numero, raison, 0xef4444)
+StepFailed(number, reason) {
+    NotifyDiscord("❌ Step " number " failed", reason, 0xef4444)
     ExitApp()
 }
 
 ; ============================================
-;  LANCEMENT DU JEU
+;  GAME LAUNCH
 ; ============================================
-LancerJeu() {
-    global cheminJeu, titreFenetre, timeoutLancement
+LaunchGame() {
+    global gamePath, windowTitle, launchTimeout
 
-    if (WinExist(titreFenetre)) {
-        WinActivate(titreFenetre)
+    if (WinExist(windowTitle)) {
+        WinActivate(windowTitle)
         Sleep(1000)
         return true
     }
 
     try {
-        Run(cheminJeu)
+        Run(gamePath)
     } catch {
         return false
     }
 
-    if (!WinWait(titreFenetre, , timeoutLancement))
+    if (!WinWait(windowTitle, , launchTimeout))
         return false
 
-    WinActivate(titreFenetre)
-    WinWaitActive(titreFenetre, , 5)
+    WinActivate(windowTitle)
+    WinWaitActive(windowTitle, , 5)
     Sleep(2000)
     return true
 }
 
 ; ============================================
-;  SÉQUENCE PRINCIPALE — 8 ÉTAPES
+;  MAIN SEQUENCE — 8 STEPS
 ; ============================================
-LancerSequence() {
-    NotifierDiscord("🚀 Démarrage", "Bot lancé, début de la séquence")
+RunSequence() {
+    NotifyDiscord("🚀 Starting", "Bot launched, beginning sequence")
 
-    ; --- ÉTAPE 0 : Lancer le jeu ---
-    if (!LancerJeu())
-        EchecEtape(0, "Impossible de lancer le jeu")
+    ; --- STEP 0: Launch the game ---
+    if (!LaunchGame())
+        StepFailed(0, "Unable to launch the game")
 
-    NotifierDiscord("✅ Terminé", "L'etape 0 a été exécutée avec succès")
+    NotifyDiscord("✅ Completed", "Step 0 executed successfully")
     ExitApp()
 }
