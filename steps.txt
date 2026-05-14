@@ -1,0 +1,23 @@
+ÉTAPE 1 : Passer les Pop up et news de démarrage
+  Type : clic
+  Position : x:960 y:540
+  Indice : pixel x:100 y:100 devient 0xFFFFFF (menu principal blanc)
+  Délai : 1000 ms
+
+ÉTAPE 2 : Ouvrir le menu Quêtes
+  Type : touche clavier
+  Touche : Q
+  Indice : pixel x:300 y:200 devient 0xFFD700 (or, titre du menu)
+  Délai : 500 ms
+
+ÉTAPE 3 : Cliquer sur l'onglet "Journalières"
+  Type : clic
+  Position : x:450 y:230
+  Indice : pixel x:450 y:240 devient 0x3B82F6 (onglet bleu actif)
+  Délai : 500 ms
+
+ÉTAPE 9 : Récuperer les récompenses
+  Type : clic
+  Position : x:450 y:230
+  Indice : pixel x:450 y:240 devient 0x3B82F6 (onglet bleu actif)
+  Délai : 500 ms
