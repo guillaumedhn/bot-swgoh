@@ -189,7 +189,7 @@ LaunchGame() {
 
     WinActivate(windowTitle)
     WinWaitActive(windowTitle, , 5)
-    Sleep(12000)
+    Sleep(16000)
     return true
 }
 
