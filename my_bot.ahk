@@ -189,7 +189,7 @@ LaunchGame() {
 
     WinActivate(windowTitle)
     WinWaitActive(windowTitle, , 5)
-    Sleep(2000)
+    Sleep(12000)
     return true
 }
 
@@ -197,7 +197,10 @@ LaunchGame() {
 ;  STEP 1 — Dismiss startup news / pop-ups
 ; ============================================
 ;  Several pop-ups can stack on launch (news, daily login, calendar...).
-;  We press Escape repeatedly until the main menu sentinel pixel is visible.
+;  Best-effort: if the main menu is already visible, do nothing. Otherwise
+;  press Escape repeatedly until either the menu appears or we exhaust our
+;  attempts. We never fail here — Step 2's ImageSearch is the real test of
+;  whether we successfully reached the main menu.
 Step1_DismissNews() {
     global colorTolerance
     mainMenuX     := 100
@@ -207,11 +210,9 @@ Step1_DismissNews() {
 
     Loop maxAttempts {
         if (CompareColor(PixelGetColor(mainMenuX, mainMenuY), mainMenuColor, colorTolerance))
-            return true
+            return
         SendKey("{Escape}", 800)
     }
-
-    return false
 }
 
 ; ============================================
@@ -281,14 +282,13 @@ RunSequence() {
         StepFailed(0, "Unable to launch the game")
     NotifyDiscord("✅ Completed", "Step 0 executed successfully")
 
-    ; --- STEP 1: Dismiss startup news / pop-ups ---
-    if (!Step1_DismissNews())
-        StepFailed(1, "Main menu not reached after dismissing pop-ups")
+    ; --- STEP 1: Dismiss startup news / pop-ups (best-effort) ---
+    Step1_DismissNews()
     NotifyDiscord("✅ Completed", "Step 1 executed successfully")
 
-    ; --- STEP 2: Open Chargements shop and buy recurring items ---
+    ; --- STEP 2: Open Shipments shop and buy recurring items ---
     if (!Step2_BuyShipments())
-        StepFailed(2, "Could not open Chargements or shipments.png not found")
+        StepFailed(2, "Could not open Shipments or shipments.png not found")
     NotifyDiscord("✅ Completed", "Step 2 executed successfully")
 
     ExitApp()
