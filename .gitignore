@@ -1,0 +1,26 @@
+# Secrets — NE JAMAIS COMMIT
+.env
+*.env
+.env.local
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# Logs
+logs/
+*.log
+
+# Exécutables compilés (optionnel — selon si tu veux les versionner)
+*.exe
+
+# OS
+Thumbs.db
+.DS_Store
+
+# VS Code
+.vscode/
