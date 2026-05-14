@@ -41,8 +41,8 @@ async def on_ready():
         print(f"⚠ Erreur sync : {e}")
 
 # ============ COMMANDES SLASH ============
-@bot.tree.command(name="lancer", description="Lance le bot de jeu")
-async def lancer(interaction: discord.Interaction):
+@bot.tree.command(name="start", description="Lance le bot de jeu")
+async def start(interaction: discord.Interaction):
     if not is_authorized(interaction):
         await interaction.response.send_message("⛔ Non autorisé", ephemeral=True)
         return
@@ -63,8 +63,8 @@ async def lancer(interaction: discord.Interaction):
     except Exception as e:
         await interaction.response.send_message(f"❌ Erreur : {e}")
 
-@bot.tree.command(name="stopper", description="Arrête le bot de jeu")
-async def stopper(interaction: discord.Interaction):
+@bot.tree.command(name="stop", description="Arrête le bot de jeu")
+async def stop(interaction: discord.Interaction):
     if not is_authorized(interaction):
         await interaction.response.send_message("⛔ Non autorisé", ephemeral=True)
         return
@@ -81,8 +81,8 @@ async def stopper(interaction: discord.Interaction):
     )
     await interaction.response.send_message(embed=embed)
 
-@bot.tree.command(name="statut", description="État du bot")
-async def statut(interaction: discord.Interaction):
+@bot.tree.command(name="status", description="État du bot")
+async def status(interaction: discord.Interaction):
     if not is_authorized(interaction):
         await interaction.response.send_message("⛔ Non autorisé", ephemeral=True)
         return
