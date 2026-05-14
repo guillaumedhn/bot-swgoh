@@ -5,20 +5,72 @@ A_CoordModeMouse := "Screen"
 A_CoordModePixel := "Screen"
 
 ; ============================================
-;  CONFIGURATION
+;  LOAD CONFIG FROM .env
 ; ============================================
-gamePath        := "C:\Full\Path\To\YourGame.exe"
-windowTitle     := "ahk_exe YourGame.exe"
-webhookUrl      := "YOUR_DISCORD_WEBHOOK"
-launchTimeout   := 60        ; max seconds to load the game
-colorTolerance  := 15
-autoMode        := false     ; true = auto-launch on script startup
+envFile := A_ScriptDir "\my_bot.env"
+
+if (!FileExist(envFile)) {
+    MsgBox(
+        "Config file not found:`n" envFile
+        "`n`nCopy my_bot.env.example to my_bot.env and fill it in.",
+        "Config error", "Icon!")
+    ExitApp()
+}
+
+config := LoadEnv(envFile)
+
+gamePath        := config.Get("GAME_PATH", "")
+windowTitle     := config.Get("WINDOW_TITLE", "")
+webhookUrl      := config.Get("WEBHOOK_URL", "")
+launchTimeout   := Integer(config.Get("LAUNCH_TIMEOUT", "60"))
+colorTolerance  := Integer(config.Get("COLOR_TOLERANCE", "15"))
+autoMode        := (config.Get("AUTO_MODE", "false") = "true")
+
+; Basic checks
+if (gamePath = "" || windowTitle = "") {
+    MsgBox("GAME_PATH or WINDOW_TITLE missing in my_bot.env", "Error", "Icon!")
+    ExitApp()
+}
+
+; ============================================
+;  .env READER
+; ============================================
+LoadEnv(path) {
+    result := Map()
+    content := FileRead(path, "UTF-8")
+
+    for line in StrSplit(content, "`n", "`r") {
+        line := Trim(line)
+
+        ; Skip empty lines and comments
+        if (line = "" || SubStr(line, 1, 1) = "#")
+            continue
+
+        ; Split KEY=VALUE at the first =
+        pos := InStr(line, "=")
+        if (pos = 0)
+            continue
+
+        key := Trim(SubStr(line, 1, pos - 1))
+        value := Trim(SubStr(line, pos + 1))
+
+        ; Strip surrounding quotes if present
+        if ((SubStr(value, 1, 1) = '"' && SubStr(value, -1) = '"')
+         || (SubStr(value, 1, 1) = "'" && SubStr(value, -1) = "'"))
+            value := SubStr(value, 2, StrLen(value) - 2)
+
+        result[key] := value
+    }
+
+    return result
+}
 
 ; ============================================
 ;  HOTKEYS
 ; ============================================
 F1::DebugTool()
 F6::RunSequence()
+F4::TestNotification()
 F7::EmergencyStop()
 
 ; Auto mode: trigger immediately (useful for controller.py and scheduler)
@@ -48,11 +100,20 @@ EmergencyStop() {
 }
 
 ; ============================================
+;  TEST NOTIFICATION
+; ============================================
+TestNotification() {
+    NotifyDiscord("🧪 Test", "This message comes from my AHK bot")
+    ToolTip("Notification sent")
+    SetTimer(() => ToolTip(), -2000)
+}
+
+; ============================================
 ;  HELPERS
 ; ============================================
 NotifyDiscord(title, message, color := 0x22c55e) {
     global webhookUrl
-    if (webhookUrl = "YOUR_DISCORD_WEBHOOK")
+    if (webhookUrl = "")
         return
 
     json := '{"embeds":[{"title":"' title '","description":"' message '","color":' color '}]}'
