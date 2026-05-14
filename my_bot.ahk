@@ -194,6 +194,83 @@ LaunchGame() {
 }
 
 ; ============================================
+;  STEP 1 — Dismiss startup news / pop-ups
+; ============================================
+;  Several pop-ups can stack on launch (news, daily login, calendar...).
+;  We press Escape repeatedly until the main menu sentinel pixel is visible.
+Step1_DismissNews() {
+    global colorTolerance
+    mainMenuX     := 100
+    mainMenuY     := 100
+    mainMenuColor := 0xFFFFFF
+    maxAttempts   := 8
+
+    Loop maxAttempts {
+        if (CompareColor(PixelGetColor(mainMenuX, mainMenuY), mainMenuColor, colorTolerance))
+            return true
+        SendKey("{Escape}", 800)
+    }
+
+    return false
+}
+
+; ============================================
+;  STEP 2 — Open "Chargements" shop and buy 4 recurring items
+; ============================================
+;  1. Find and click the "Chargements" entry on the main menu via ImageSearch
+;     (reference image: images/shipments.png).
+;  2. For each of the 4 item slots: check the sentinel color (= item is
+;     buyable), click the buy button, then click the purchase confirmation.
+;     If the sentinel color doesn't match (already bought, locked, ...),
+;     skip that slot silently.
+Step2_BuyShipments() {
+    global colorTolerance
+
+    shipmentsImage := A_ScriptDir "\images\shipments.png"
+
+    ; --- Navigate to the shop ---
+    if (!FileExist(shipmentsImage))
+        return false
+
+    foundX := 0
+    foundY := 0
+    try {
+        if (!ImageSearch(&foundX, &foundY, 0, 0, A_ScreenWidth, A_ScreenHeight,
+                         "*30 " shipmentsImage))
+            return false
+    } catch {
+        return false
+    }
+
+    ClickPos(foundX, foundY, 1500)
+
+    ; --- Buy items ---
+    ; Each slot: { x, y, color, confirmX, confirmY }
+    ;   x, y       = buy button position
+    ;   color      = pixel color at (x, y) when the item is available
+    ;   confirmX/Y = position of the purchase confirmation button
+    ; TODO: capture these values with F1 in-game and fill them in.
+    items := [
+        { x: 0, y: 0, color: 0x000000, confirmX: 0, confirmY: 0 },
+        { x: 0, y: 0, color: 0x000000, confirmX: 0, confirmY: 0 },
+        { x: 0, y: 0, color: 0x000000, confirmX: 0, confirmY: 0 },
+        { x: 0, y: 0, color: 0x000000, confirmX: 0, confirmY: 0 },
+    ]
+
+    for item in items {
+        if (item.x = 0)
+            continue
+        if (!CompareColor(PixelGetColor(item.x, item.y), item.color, colorTolerance))
+            continue
+
+        ClickPos(item.x, item.y, 700)
+        ClickPos(item.confirmX, item.confirmY, 1000)
+    }
+
+    return true
+}
+
+; ============================================
 ;  MAIN SEQUENCE — 8 STEPS
 ; ============================================
 RunSequence() {
@@ -202,7 +279,17 @@ RunSequence() {
     ; --- STEP 0: Launch the game ---
     if (!LaunchGame())
         StepFailed(0, "Unable to launch the game")
-
     NotifyDiscord("✅ Completed", "Step 0 executed successfully")
+
+    ; --- STEP 1: Dismiss startup news / pop-ups ---
+    if (!Step1_DismissNews())
+        StepFailed(1, "Main menu not reached after dismissing pop-ups")
+    NotifyDiscord("✅ Completed", "Step 1 executed successfully")
+
+    ; --- STEP 2: Open Chargements shop and buy recurring items ---
+    if (!Step2_BuyShipments())
+        StepFailed(2, "Could not open Chargements or shipments.png not found")
+    NotifyDiscord("✅ Completed", "Step 2 executed successfully")
+
     ExitApp()
 }
