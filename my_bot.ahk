@@ -161,6 +161,36 @@ WaitForColor(x, y, expectedColor, timeout := 10000) {
     return false
 }
 
+;  Poll the screen for an image (relative path under the script dir) until it's
+;  found or the timeout elapses. On success, fills foundX/foundY with the match
+;  coordinates and returns true.
+WaitForImage(imageRelPath, &foundX, &foundY, timeout := 5000) {
+    fullPath := A_ScriptDir "\" imageRelPath
+    if (!FileExist(fullPath))
+        return false
+
+    start := A_TickCount
+    while (A_TickCount - start < timeout) {
+        try {
+            if (ImageSearch(&foundX, &foundY, 0, 0, A_ScreenWidth, A_ScreenHeight,
+                            "*30 " fullPath))
+                return true
+        }
+        Sleep(150)
+    }
+    return false
+}
+
+;  Convenience wrapper: wait for an image, click it, pause afterwards.
+WaitForAndClickImage(imageRelPath, timeout := 5000, pauseAfter := 500) {
+    foundX := 0
+    foundY := 0
+    if (!WaitForImage(imageRelPath, &foundX, &foundY, timeout))
+        return false
+    ClickPos(foundX, foundY, pauseAfter)
+    return true
+}
+
 StepFailed(number, reason) {
     NotifyDiscord("❌ Step " number " failed", reason, 0xef4444)
     ExitApp()
@@ -220,10 +250,15 @@ Step1_DismissNews() {
 ; ============================================
 ;  1. Verify the "Chargements" navigation icon by its sentinel color, then
 ;     click it.
-;  2. For each of the 4 item slots: check the sentinel color (= item is
-;     buyable), click the buy button, click the shared purchase confirmation.
-;     If the sentinel color doesn't match (already bought, locked, ...),
-;     skip that slot silently.
+;  2. For each of the 4 items: look for its reference image on screen
+;     (ImageSearch). If found → click it → wait for the shared confirmation
+;     popup image → click it. If the item isn't found (already bought,
+;     locked, ...), skip silently.
+;
+;  Reference images (place under images/ in the script dir):
+;    - images/item1.png, item2.png, item3.png, item4.png : unique capture of
+;      each item's buy area
+;    - images/confirm.png : the shared purchase confirmation button
 Step2_BuyShipments() {
     global colorTolerance
 
@@ -232,35 +267,25 @@ Step2_BuyShipments() {
     shipmentsY     := 394
     shipmentsColor := 0xFFFFFF
 
-    ; --- Shared purchase confirmation popup button ---
-    ; TODO: capture with F1 in-game (same popup for all 4 items).
-    confirmX := 0
-    confirmY := 0
-
-    ; --- Navigate to the shop ---
     if (!CompareColor(PixelGetColor(shipmentsX, shipmentsY), shipmentsColor, colorTolerance))
         return false
 
     ClickPos(shipmentsX, shipmentsY, 1500)
 
     ; --- Buy items ---
-    ; Each slot: { x, y, color }
-    ;   x, y  = buy button position
-    ;   color = pixel color at (x, y) when the item is available
-    items := [
-        { x: 1437, y: 849, color: 0xFEDD70 },
-        { x: 713,  y: 849, color: 0xFDD571 },
-        { x: 1070, y: 859, color: 0x201D18 },
-        { x: 2888, y: 497, color: 0xFFE778 },
+    itemImages := [
+        "images\item1.png",
+        "images\item2.png",
+        "images\item3.png",
+        "images\item4.png",
     ]
+    confirmImage := "images\confirm.png"
 
-    for item in items {
-        if (!CompareColor(PixelGetColor(item.x, item.y), item.color, colorTolerance))
+    for imagePath in itemImages {
+        if (!WaitForAndClickImage(imagePath, 2000, 700))
             continue
 
-        ClickPos(item.x, item.y, 700)
-        if (confirmX != 0)
-            ClickPos(confirmX, confirmY, 1000)
+        WaitForAndClickImage(confirmImage, 3000, 1000)
     }
 
     return true
@@ -278,8 +303,9 @@ RunSequence() {
     NotifyDiscord("✅ Completed", "Step 0 executed successfully")
 
     ; --- STEP 1: Dismiss startup news / pop-ups (best-effort) ---
-    Step1_DismissNews()
-    NotifyDiscord("✅ Completed", "Step 1 executed successfully")
+    ; Temporarily disabled — re-enable once the sentinel pixel is validated.
+    ; Step1_DismissNews()
+    ; NotifyDiscord("✅ Completed", "Step 1 executed successfully")
 
     ; --- STEP 2: Open Shipments shop and buy recurring items ---
     if (!Step2_BuyShipments())
