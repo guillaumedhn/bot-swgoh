@@ -4,12 +4,15 @@ get btn x:2294 y:975 color:0x1D712D
 dismiss x:2505 y:372 color:0xFFFFF0
 
 STEP 2 — Open "Chargements" shop and buy 4 recurring items
-  x:1365 y:394 color:0xFFFFFF
+  chargements pos: x:1365 y:394 color:0xFFFFFF
 
+items pos:
   x:1437 y:849 color:0xFEDD70
   x:713 y:849 color:0xFDD571
   x:1070 y:859 color:0x201D18
   x:2888 y:497 color:0xFFE778
+
+  confirm pos: x:1819 y:909 color:0x43241B
 
 STEP 3 - Open SHOP and get the daily free reward
 
