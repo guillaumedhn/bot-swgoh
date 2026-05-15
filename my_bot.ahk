@@ -308,6 +308,7 @@ Step2_BuyShipments() {
         return false
 
     ClickPos(shipmentsX, shipmentsY, 1500)
+    Sleep(Random(1000, 2000))
 
     ; --- Buy items ---
     ; The 4 slots where money.png is expected to appear when the item is buyable.
@@ -326,10 +327,53 @@ Step2_BuyShipments() {
                                   pos.x - searchRadius, pos.y - searchRadius,
                                   pos.x + searchRadius, pos.y + searchRadius))
             continue
+        Sleep(Random(1000, 2000))
 
         WaitForAndClickImage(confirmImage, 3000, 1000)
+        Sleep(Random(1000, 2000))
     }
 
+    SendKey("{Escape}", 1000)
+    Sleep(Random(1000, 2000))
+    return true
+}
+
+; ============================================
+;  STEP 3 — Open SHOP and claim the daily free reward
+; ============================================
+;  1. Return to the main menu (Escape), then ImageSearch for the SHOP
+;     navigation icon and click it.
+;  2. ImageSearch for free.png around the known reward button position
+;     and click it to claim the daily free reward.
+;
+;  Reference images:
+;    - images/shop.png : the SHOP navigation icon on the main menu
+;    - images/free.png : the daily free reward button inside the shop
+Step3_GetFreeReward() {
+    shopImage := "images\shop.png"
+    freeImage := "images\free.png"
+
+    ; --- Back to main menu, then open Shop ---
+    SendKey("{Escape}", 1000)
+    Sleep(Random(1000, 2000))
+
+    if (!WaitForAndClickImage(shopImage, 5000, 2000))
+        return false
+    Sleep(Random(1000, 2000))
+
+    ; --- Claim the daily free reward ---
+    freeBtnX     := 668
+    freeBtnY     := 781
+    searchRadius := 80
+
+    if (!WaitForAndClickImage(freeImage, 4000, 1500,
+                              freeBtnX - searchRadius, freeBtnY - searchRadius,
+                              freeBtnX + searchRadius, freeBtnY + searchRadius))
+        return false
+    Sleep(Random(1000, 2000))
+
+    SendKey("{Escape}", 1000)
+    Sleep(Random(1000, 2000))
     return true
 }
 
@@ -352,6 +396,11 @@ RunSequence() {
     if (!Step2_BuyShipments())
         StepFailed(2, "Shipments icon not found on main menu (color mismatch)")
     NotifyDiscord("✅ Completed", "Step 2 executed successfully")
+
+    ; --- STEP 3: Open Shop and claim the daily free reward ---
+    if (!Step3_GetFreeReward())
+        StepFailed(3, "Shop icon or free reward button not found")
+    NotifyDiscord("✅ Completed", "Step 3 executed successfully")
 
     ExitApp()
 }
