@@ -25,3 +25,6 @@ fight btn: x:2930 y:1373 color:0x1E702E
 auto fight btn: x:254 y:59 color:0xFFFFF1
 
 defeat red: x:1738 y:712 color:0xA52222
+
+STEP 7 - retrieve all rewards
+get btn here: x:3096 y:345 color:0x1D6E2D
