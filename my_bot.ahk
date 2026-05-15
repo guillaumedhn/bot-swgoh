@@ -319,8 +319,12 @@ Step2_BuyShipments() {
         { x: 2888, y: 497 },
     ]
     itemImage    := "images\money.png"
-    confirmImage := "images\confirm.png"
     searchRadius := 60
+
+    ; The confirm popup shows the same money icon next to the confirm button,
+    ; so we ImageSearch money.png around the confirm position too.
+    confirmX := 1819
+    confirmY := 909
 
     for pos in itemPositions {
         if (!WaitForAndClickImage(itemImage, 2000, 700,
@@ -329,8 +333,10 @@ Step2_BuyShipments() {
             continue
         Sleep(Random(1000, 2000))
 
-        WaitForAndClickImage(confirmImage, 3000, 1000)
-        Sleep(Random(1000, 2000))
+        WaitForAndClickImage(itemImage, 3000, 1000,
+                             confirmX - searchRadius, confirmY - searchRadius,
+                             confirmX + searchRadius, confirmY + searchRadius)
+        Sleep(Random(1500, 2000))
     }
 
     SendKey("{Escape}", 1000)
