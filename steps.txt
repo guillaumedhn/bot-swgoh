@@ -1,4 +1,5 @@
 STEP 1 — Dismiss startup news / pop-ups
+x:2294 y:975 color:0x1D712D
 
 STEP 2 — Open "Chargements" shop and buy 4 recurring items
   x:1365 y:394 color:0xFFFFFF
@@ -7,3 +8,7 @@ STEP 2 — Open "Chargements" shop and buy 4 recurring items
   x:713 y:849 color:0xFDD571
   x:1070 y:859 color:0x201D18
   x:2888 y:497 color:0xFFE778
+
+STEP 3 - Open SHOP and get the daily free reward
+
+x:668 y:781 color:0xFFFFFF
