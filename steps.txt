@@ -14,3 +14,10 @@ STEP 2 — Open "Chargements" shop and buy 4 recurring items
 STEP 3 - Open SHOP and get the daily free reward
 
 free reward btn: x:668 y:781 color:0xFFFFFF
+
+STEP 4
+participate btn: x:1707 y:1057 color:0xFFFFFF
+
+battle btn: x:1683 y:1091 color:0xDCE9DE
+
+fight btn: x:2930 y:1373 color:0x1E702E
