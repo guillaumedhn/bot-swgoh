@@ -230,24 +230,56 @@ LaunchGame() {
 }
 
 ; ============================================
-;  STEP 1 — Dismiss startup news / pop-ups
+;  STEP 1 — Dismiss startup news / pop-ups + claim daily login rewards
 ; ============================================
 ;  Several pop-ups can stack on launch (news, daily login, calendar...).
-;  Best-effort: if the main menu is already visible, do nothing. Otherwise
-;  press Escape repeatedly until either the menu appears or we exhaust our
-;  attempts. We never fail here — Step 2's ImageSearch is the real test of
+;  Best-effort, never fails: Step 2's ImageSearch is the real test of
 ;  whether we successfully reached the main menu.
+;
+;  Daily login rewards: multiple "get" buttons may appear in sequence
+;  (one per available reward). Loop on images/get.png around the known
+;  button position, clicking each match and pausing between tries so the
+;  next reward popup has time to render.
 Step1_DismissNews() {
-    global colorTolerance
-    mainMenuX     := 100
-    mainMenuY     := 100
-    mainMenuColor := 0xFFFFFF
-    maxAttempts   := 8
+    getBtnX        := 2294
+    getBtnY        := 975
+    getImage       := "images\get.png"
+    searchRadius   := 80
+    maxGetAttempts := 10
+    retryPause     := 3000
 
-    Loop maxAttempts {
-        if (CompareColor(PixelGetColor(mainMenuX, mainMenuY), mainMenuColor, colorTolerance))
-            return
-        SendKey("{Escape}", 800)
+    Loop maxGetAttempts {
+        if (!WaitForAndClickImage(getImage, 1500, 500,
+                                  getBtnX - searchRadius, getBtnY - searchRadius,
+                                  getBtnX + searchRadius, getBtnY + searchRadius))
+            break
+        Sleep(retryPause)
+    }
+
+    ; --- Dismiss any remaining popups (close button or Escape) ---
+    ;  Multiple news panels can stack; keep looking for close.png and
+    ;  clicking it. After a few empty passes (no close button visible),
+    ;  fall back to Escape and finally exit.
+    closeBtnX         := 2505
+    closeBtnY         := 372
+    closeImage        := "images\close.png"
+    maxCloseAttempts  := 20
+    maxConsecutiveMiss := 3
+    consecutiveMiss   := 0
+
+    Loop maxCloseAttempts {
+        if (WaitForAndClickImage(closeImage, 800, 500,
+                                 closeBtnX - searchRadius, closeBtnY - searchRadius,
+                                 closeBtnX + searchRadius, closeBtnY + searchRadius)) {
+            consecutiveMiss := 0
+            Sleep(retryPause)
+            continue
+        }
+
+        consecutiveMiss += 1
+        if (consecutiveMiss >= maxConsecutiveMiss)
+            break
+        SendKey("{Escape}", retryPause)
     }
 }
 
@@ -312,10 +344,9 @@ RunSequence() {
         StepFailed(0, "Unable to launch the game")
     NotifyDiscord("✅ Completed", "Step 0 executed successfully")
 
-    ; --- STEP 1: Dismiss startup news / pop-ups (best-effort) ---
-    ; Temporarily disabled — re-enable once the sentinel pixel is validated.
-    ; Step1_DismissNews()
-    ; NotifyDiscord("✅ Completed", "Step 1 executed successfully")
+    ; --- STEP 1: Dismiss startup news / pop-ups + claim daily login rewards ---
+    Step1_DismissNews()
+    NotifyDiscord("✅ Completed", "Step 1 executed successfully")
 
     ; --- STEP 2: Open Shipments shop and buy recurring items ---
     if (!Step2_BuyShipments())
