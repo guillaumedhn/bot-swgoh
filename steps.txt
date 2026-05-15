@@ -16,6 +16,8 @@ STEP 3 - Open SHOP and get the daily free reward
 free reward btn: x:668 y:781 color:0xFFFFFF
 
 STEP 4
+arena btn: x:901 y:692 color:0x020202
+
 participate btn: x:1707 y:1057 color:0xFFFFFF
 
 battle btn: x:1683 y:1091 color:0xDCE9DE
@@ -25,3 +27,6 @@ fight btn: x:2930 y:1373 color:0x1E702E
 auto toggle btn: x:254 y:59 color:0xFFFFF1
 
 defeat red: x:1738 y:712 color:0xA52222
+
+STEP 7 - retrieve all rewards
+get btn here: x:3096 y:345 color:0x1D6E2D
