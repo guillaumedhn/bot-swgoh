@@ -401,8 +401,11 @@ Step4_FleetArena() {
 
     searchRadius := 80
 
-    ; --- 1. Open Arena (full-screen image search, no known coords) ---
-    if (!WaitForAndClickImage(arenaImage, 5000, 2000))
+    ; --- 1. Open Arena ---
+    arenaX := 901, arenaY := 692
+    if (!WaitForAndClickImage(arenaImage, 5000, 2000,
+                              arenaX - searchRadius, arenaY - searchRadius,
+                              arenaX + searchRadius, arenaY + searchRadius))
         return false
     Sleep(Random(1000, 2000))
 
