@@ -4,6 +4,11 @@
 A_CoordModeMouse := "Screen"
 A_CoordModePixel := "Screen"
 
+; Per-monitor DPI awareness. Without this, AHK reads coords from the unscaled
+; buffer, which breaks when Windows display scaling != 100% or when the game
+; window moves across monitors with different DPI.
+try DllCall("SetThreadDpiAwarenessContext", "ptr", -3, "ptr")
+
 ; ============================================
 ;  LOAD CONFIG FROM .env
 ; ============================================
@@ -151,11 +156,23 @@ CompareColor(c1, c2, tol := 15) {
     return (Abs(r1-r2) <= tol && Abs(g1-g2) <= tol && Abs(b1-b2) <= tol)
 }
 
-WaitForColor(x, y, expectedColor, timeout := 10000) {
+;  Optional jitterIntervalMs: every N ms, nudge the mouse by 1px and back.
+;  Defeats the in-game "Are you still here?" idle dialog during long waits.
+WaitForColor(x, y, expectedColor, timeout := 10000, jitterIntervalMs := 0) {
     start := A_TickCount
+    lastJitter := A_TickCount
     while (A_TickCount - start < timeout) {
         if (CompareColor(PixelGetColor(x, y), expectedColor, colorTolerance))
             return true
+
+        if (jitterIntervalMs > 0 && A_TickCount - lastJitter >= jitterIntervalMs) {
+            MouseGetPos(&mx, &my)
+            MouseMove(mx + 1, my + 1, 0)
+            Sleep(50)
+            MouseMove(mx, my, 0)
+            lastJitter := A_TickCount
+        }
+
         Sleep(100)
     }
     return false
@@ -197,8 +214,61 @@ WaitForAndClickImage(imageRelPath, timeout := 5000, pauseAfter := 500, x1 := 0, 
     return true
 }
 
+;  Capture the full virtual screen (all monitors) to a PNG via PowerShell.
+;  Best-effort: failures are swallowed so StepFailed can always send a fallback
+;  text notification.
+SaveScreenshot(filepath) {
+    psCmd := "Add-Type -AssemblyName System.Windows.Forms,System.Drawing; "
+           . "$b = [System.Windows.Forms.SystemInformation]::VirtualScreen; "
+           . "$bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height; "
+           . "$g = [System.Drawing.Graphics]::FromImage($bmp); "
+           . "$g.CopyFromScreen($b.X, $b.Y, 0, 0, $b.Size); "
+           . "$bmp.Save('" filepath "'); "
+           . "$bmp.Dispose(); $g.Dispose()"
+
+    try RunWait('powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "' psCmd '"', , "Hide")
+}
+
+;  Post a Discord embed with an attached file via curl.exe (multipart upload).
+;  curl.exe ships with Windows 10 1803+; no external deps needed.
+NotifyDiscordWithFile(filepath, title, message, color := 0xef4444) {
+    global webhookUrl
+    if (webhookUrl = "" || !FileExist(filepath))
+        return false
+
+    payload := '{"embeds":[{"title":"' title '","description":"' message '","color":' color '}]}'
+    tempJson := A_Temp "\bot_discord_payload.json"
+    try FileDelete(tempJson)
+    FileAppend(payload, tempJson, "UTF-8")
+
+    cmd := 'curl.exe -s -X POST '
+         . '-F "payload_json=<' tempJson '" '
+         . '-F "file=@' filepath '" '
+         . '"' webhookUrl '"'
+
+    try RunWait(cmd, , "Hide")
+    try FileDelete(tempJson)
+    return true
+}
+
 StepFailed(number, reason) {
-    NotifyDiscord("❌ Step " number " failed", reason, 0xef4444)
+    ; Capture a screenshot so we can see what was on screen at failure time.
+    logsDir := A_ScriptDir "\logs"
+    if (!DirExist(logsDir))
+        DirCreate(logsDir)
+
+    timestamp := FormatTime(, "yyyyMMdd_HHmmss")
+    screenshotPath := logsDir "\step" number "_" timestamp ".png"
+
+    SaveScreenshot(screenshotPath)
+
+    sent := false
+    if (FileExist(screenshotPath))
+        sent := NotifyDiscordWithFile(screenshotPath, "❌ Step " number " failed", reason, 0xef4444)
+
+    if (!sent)
+        NotifyDiscord("❌ Step " number " failed", reason, 0xef4444)
+
     ExitApp()
 }
 
@@ -456,7 +526,9 @@ Step4_FleetArena() {
     defeatX     := 1738
     defeatY     := 712
     defeatColor := 0xA52222
-    WaitForColor(defeatX, defeatY, defeatColor, 240000)
+    ; Jitter the mouse every 3 min during the wait so the game's idle dialog
+    ; ("Are you still here?") doesn't fire mid-battle.
+    WaitForColor(defeatX, defeatY, defeatColor, 240000, 180000)
 
     ; --- 7. Random tap around the defeat banner to dismiss the result ---
     Sleep(Random(1000, 2000))
@@ -475,26 +547,26 @@ RunSequence() {
     ; --- STEP 0: Launch the game ---
     if (!LaunchGame())
         StepFailed(0, "Unable to launch the game")
-    NotifyDiscord("✅ Completed", "Step 0 executed successfully")
+    NotifyDiscord("✅ Completed", "Step 0 - Launch the game executed successfully")
 
     ; --- STEP 1: Dismiss startup news / pop-ups + claim daily login rewards ---
     Step1_DismissNews()
-    NotifyDiscord("✅ Completed", "Step 1 executed successfully")
+    NotifyDiscord("✅ Completed", "Step 1 - Dismiss startup news and claim daily login rewards executed successfully")
 
     ; --- STEP 2: Open Shipments shop and buy recurring items ---
     if (!Step2_BuyShipments())
         StepFailed(2, "Shipments icon not found on main menu (color mismatch)")
-    NotifyDiscord("✅ Completed", "Step 2 executed successfully")
+    NotifyDiscord("✅ Completed", "Step 2 - Buy Chargements shop recurring items executed successfully")
 
     ; --- STEP 3: Open Shop and claim the daily free reward ---
     if (!Step3_GetFreeReward())
         StepFailed(3, "Shop icon or free reward button not found")
-    NotifyDiscord("✅ Completed", "Step 3 executed successfully")
+    NotifyDiscord("✅ Completed", "Step 3 - Claim daily free reward from Shop executed successfully")
 
     ; --- STEP 4: Fleet Arena auto-battle ---
     if (!Step4_FleetArena())
         StepFailed(4, "Fleet arena flow failed (nav, battle, auto, or defeat detection)")
-    NotifyDiscord("✅ Completed", "Step 4 executed successfully")
+    NotifyDiscord("✅ Completed", "Step 4 - Fleet Arena auto-battle executed successfully")
 
     ExitApp()
 }
