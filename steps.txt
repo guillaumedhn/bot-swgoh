@@ -22,6 +22,6 @@ battle btn: x:1683 y:1091 color:0xDCE9DE
 
 fight btn: x:2930 y:1373 color:0x1E702E
 
-auto fight btn: x:254 y:59 color:0xFFFFF1
+auto toggle btn: x:254 y:59 color:0xFFFFF1
 
 defeat red: x:1738 y:712 color:0xA52222

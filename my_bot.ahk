@@ -378,6 +378,86 @@ Step3_GetFreeReward() {
 }
 
 ; ============================================
+;  STEP 4 — Fleet Arena: auto-battle the default opponent
+; ============================================
+;  1. Open the Arena nav icon from the main menu.
+;  2. Click "Participate" → "Battle" (default top opponent) → "Fight".
+;  3. Enable auto-battle once the fight starts.
+;  4. Poll the defeat banner pixel until it turns red, then tap a random
+;     spot around that position to dismiss the result screen.
+;
+;  Reference images:
+;    - images/arena.png         : Arena nav icon on the main menu
+;    - images/participate.png   : "Participate" entry button
+;    - images/battle.png        : "Battle" challenge button (default opponent)
+;    - images/fight.png         : "Fight" deploy/start button
+;    - images/auto-toggle.png   : Auto-battle toggle inside the battle UI
+Step4_FleetArena() {
+    arenaImage       := "images\arena.png"
+    participateImage := "images\participate.png"
+    battleImage      := "images\battle.png"
+    fightImage       := "images\fight.png"
+    autoImage        := "images\auto-toggle.png"
+
+    searchRadius := 80
+
+    ; --- 1. Open Arena (full-screen image search, no known coords) ---
+    if (!WaitForAndClickImage(arenaImage, 5000, 2000))
+        return false
+    Sleep(Random(1000, 2000))
+
+    ; --- 2. Participate ---
+    participateX := 1707, participateY := 1057
+    if (!WaitForAndClickImage(participateImage, 5000, 1500,
+                              participateX - searchRadius, participateY - searchRadius,
+                              participateX + searchRadius, participateY + searchRadius))
+        return false
+    Sleep(Random(1000, 2000))
+
+    ; --- 3. Battle (default top opponent) ---
+    battleX := 1683, battleY := 1091
+    if (!WaitForAndClickImage(battleImage, 5000, 1500,
+                              battleX - searchRadius, battleY - searchRadius,
+                              battleX + searchRadius, battleY + searchRadius))
+        return false
+    Sleep(Random(1000, 2000))
+
+    ; --- 4. Fight (deploy + start) ---
+    fightX := 2930, fightY := 1373
+    if (!WaitForAndClickImage(fightImage, 8000, 2000,
+                              fightX - searchRadius, fightY - searchRadius,
+                              fightX + searchRadius, fightY + searchRadius))
+        return false
+    Sleep(Random(1000, 2000))
+
+    ; --- 5. Enable auto-battle if needed ---
+    ;  images/auto-toggle.png captures the toggle in its OFF state (no green
+    ;  indicator). If we find it, auto is off → click to enable. If we don't
+    ;  find it, auto is already on → skip and let the battle resolve.
+    autoX := 254, autoY := 59
+    if (WaitForAndClickImage(autoImage, 8000, 1500,
+                             autoX - searchRadius, autoY - searchRadius,
+                             autoX + searchRadius, autoY + searchRadius))
+        Sleep(Random(1000, 2000))
+
+    ; --- 6. Wait for the defeat banner pixel to turn red (up to 4 min) ---
+    ;  If the banner never shows (victory, disconnect, slow fight...), fall
+    ;  through anyway — a tap around the banner position is harmless and
+    ;  nudges whatever result/continue screen is showing.
+    defeatX     := 1738
+    defeatY     := 712
+    defeatColor := 0xA52222
+    WaitForColor(defeatX, defeatY, defeatColor, 240000)
+
+    ; --- 7. Random tap around the defeat banner to dismiss the result ---
+    Sleep(Random(1000, 2000))
+    ClickPos(defeatX + Random(-100, 100), defeatY + Random(-60, 60), 1000)
+    Sleep(Random(1000, 2000))
+
+    return true
+}
+
+; ============================================
 ;  MAIN SEQUENCE — 8 STEPS
 ; ============================================
 RunSequence() {
@@ -401,6 +481,11 @@ RunSequence() {
     if (!Step3_GetFreeReward())
         StepFailed(3, "Shop icon or free reward button not found")
     NotifyDiscord("✅ Completed", "Step 3 executed successfully")
+
+    ; --- STEP 4: Fleet Arena auto-battle ---
+    if (!Step4_FleetArena())
+        StepFailed(4, "Fleet arena flow failed (nav, battle, auto, or defeat detection)")
+    NotifyDiscord("✅ Completed", "Step 4 executed successfully")
 
     ExitApp()
 }
