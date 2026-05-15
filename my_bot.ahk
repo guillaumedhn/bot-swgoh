@@ -163,17 +163,22 @@ WaitForColor(x, y, expectedColor, timeout := 10000) {
 
 ;  Poll the screen for an image (relative path under the script dir) until it's
 ;  found or the timeout elapses. On success, fills foundX/foundY with the match
-;  coordinates and returns true.
-WaitForImage(imageRelPath, &foundX, &foundY, timeout := 5000) {
+;  coordinates and returns true. Optional bounding box: (x1, y1) to (x2, y2);
+;  pass 0 for x2/y2 to default to the full screen.
+WaitForImage(imageRelPath, &foundX, &foundY, timeout := 5000, x1 := 0, y1 := 0, x2 := 0, y2 := 0) {
     fullPath := A_ScriptDir "\" imageRelPath
     if (!FileExist(fullPath))
         return false
 
+    if (x2 = 0)
+        x2 := A_ScreenWidth
+    if (y2 = 0)
+        y2 := A_ScreenHeight
+
     start := A_TickCount
     while (A_TickCount - start < timeout) {
         try {
-            if (ImageSearch(&foundX, &foundY, 0, 0, A_ScreenWidth, A_ScreenHeight,
-                            "*30 " fullPath))
+            if (ImageSearch(&foundX, &foundY, x1, y1, x2, y2, "*30 " fullPath))
                 return true
         }
         Sleep(150)
@@ -181,11 +186,12 @@ WaitForImage(imageRelPath, &foundX, &foundY, timeout := 5000) {
     return false
 }
 
-;  Convenience wrapper: wait for an image, click it, pause afterwards.
-WaitForAndClickImage(imageRelPath, timeout := 5000, pauseAfter := 500) {
+;  Convenience wrapper: wait for an image (optionally inside an area), click
+;  the match, pause afterwards.
+WaitForAndClickImage(imageRelPath, timeout := 5000, pauseAfter := 500, x1 := 0, y1 := 0, x2 := 0, y2 := 0) {
     foundX := 0
     foundY := 0
-    if (!WaitForImage(imageRelPath, &foundX, &foundY, timeout))
+    if (!WaitForImage(imageRelPath, &foundX, &foundY, timeout, x1, y1, x2, y2))
         return false
     ClickPos(foundX, foundY, pauseAfter)
     return true
@@ -250,14 +256,13 @@ Step1_DismissNews() {
 ; ============================================
 ;  1. Verify the "Chargements" navigation icon by its sentinel color, then
 ;     click it.
-;  2. For each of the 4 items: look for its reference image on screen
-;     (ImageSearch). If found → click it → wait for the shared confirmation
-;     popup image → click it. If the item isn't found (already bought,
-;     locked, ...), skip silently.
+;  2. For each of the 4 item slots: ImageSearch for the shared money.png
+;     inside a small box around the slot's known position. If found → click
+;     → wait for confirm.png → click confirm. If the price icon isn't there
+;     (already bought, locked, ...), skip silently.
 ;
 ;  Reference images (place under images/ in the script dir):
-;    - images/item1.png, item2.png, item3.png, item4.png : unique capture of
-;      each item's buy area
+;    - images/money.png   : the price/buy icon shared by all 4 slots
 ;    - images/confirm.png : the shared purchase confirmation button
 Step2_BuyShipments() {
     global colorTolerance
@@ -273,16 +278,21 @@ Step2_BuyShipments() {
     ClickPos(shipmentsX, shipmentsY, 1500)
 
     ; --- Buy items ---
-    itemImages := [
-        "images\item1.png",
-        "images\item2.png",
-        "images\item3.png",
-        "images\item4.png",
+    ; The 4 slots where money.png is expected to appear when the item is buyable.
+    itemPositions := [
+        { x: 1437, y: 849 },
+        { x: 713,  y: 849 },
+        { x: 1070, y: 859 },
+        { x: 2888, y: 497 },
     ]
+    itemImage    := "images\money.png"
     confirmImage := "images\confirm.png"
+    searchRadius := 60
 
-    for imagePath in itemImages {
-        if (!WaitForAndClickImage(imagePath, 2000, 700))
+    for pos in itemPositions {
+        if (!WaitForAndClickImage(itemImage, 2000, 700,
+                                  pos.x - searchRadius, pos.y - searchRadius,
+                                  pos.x + searchRadius, pos.y + searchRadius))
             continue
 
         WaitForAndClickImage(confirmImage, 3000, 1000)
