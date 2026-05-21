@@ -421,7 +421,8 @@ Step2_BuyShipments() {
 ;  STEP 3 — Open SHOP and claim the daily free reward
 ; ============================================
 ;  1. Return to the main menu (Escape), then ImageSearch for the SHOP
-;     navigation icon and click it.
+;     navigation icon and click it. If that misses, fall back to a backup
+;     button verified by its sentinel color (see steps.txt).
 ;  2. ImageSearch for free.png around the known reward button position
 ;     and click it to claim the daily free reward.
 ;
@@ -429,6 +430,8 @@ Step2_BuyShipments() {
 ;    - images/shop.png : the SHOP navigation icon on the main menu
 ;    - images/free.png : the daily free reward button inside the shop
 Step3_GetFreeReward() {
+    global colorTolerance
+
     shopImage := "images\shop.png"
     freeImage := "images\free.png"
 
@@ -436,8 +439,16 @@ Step3_GetFreeReward() {
     SendKey("{Escape}", 1000)
     Sleep(Random(1000, 2000))
 
-    if (!WaitForAndClickImage(shopImage, 5000, 2000))
-        return "Shop nav icon not found on main menu"
+    ; Primary: ImageSearch the SHOP nav icon. If it's not found, fall back to
+    ; the backup button, verified by its sentinel color before clicking.
+    if (!WaitForAndClickImage(shopImage, 5000, 2000)) {
+        backupX     := 1940
+        backupY     := 309
+        backupColor := 0x1A384C
+        if (!CompareColor(PixelGetColor(backupX, backupY), backupColor, colorTolerance))
+            return "Shop nav icon not found on main menu (backup button also missing)"
+        ClickPos(backupX, backupY, 2000)
+    }
     Sleep(Random(1000, 2000))
 
     ; --- Claim the daily free reward ---
