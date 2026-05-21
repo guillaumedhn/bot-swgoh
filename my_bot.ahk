@@ -375,7 +375,7 @@ Step2_BuyShipments() {
     shipmentsColor := 0xFFFFFF
 
     if (!CompareColor(PixelGetColor(shipmentsX, shipmentsY), shipmentsColor, colorTolerance))
-        return false
+        return "Shipments nav icon not found on main menu (color mismatch)"
 
     ClickPos(shipmentsX, shipmentsY, 1500)
     Sleep(Random(1000, 2000))
@@ -411,7 +411,7 @@ Step2_BuyShipments() {
 
     SendKey("{Escape}", 1000)
     Sleep(Random(1000, 2000))
-    return true
+    return ""
 }
 
 ; ============================================
@@ -434,7 +434,7 @@ Step3_GetFreeReward() {
     Sleep(Random(1000, 2000))
 
     if (!WaitForAndClickImage(shopImage, 5000, 2000))
-        return false
+        return "Shop nav icon not found on main menu"
     Sleep(Random(1000, 2000))
 
     ; --- Claim the daily free reward ---
@@ -445,12 +445,12 @@ Step3_GetFreeReward() {
     if (!WaitForAndClickImage(freeImage, 4000, 1500,
                               freeBtnX - searchRadius, freeBtnY - searchRadius,
                               freeBtnX + searchRadius, freeBtnY + searchRadius))
-        return false
+        return "Daily free reward button not found in Shop"
     Sleep(Random(1000, 2000))
 
     SendKey("{Escape}", 1000)
     Sleep(Random(1000, 2000))
-    return true
+    return ""
 }
 
 ; ============================================
@@ -482,7 +482,7 @@ Step4_FleetArena() {
     if (!WaitForAndClickImage(arenaImage, 5000, 2000,
                               arenaX - searchRadius, arenaY - searchRadius,
                               arenaX + searchRadius, arenaY + searchRadius))
-        return false
+        return "Arena nav icon not found on main menu"
     Sleep(Random(1000, 2000))
 
     ; --- 2. Participate ---
@@ -490,7 +490,7 @@ Step4_FleetArena() {
     if (!WaitForAndClickImage(participateImage, 5000, 1500,
                               participateX - searchRadius, participateY - searchRadius,
                               participateX + searchRadius, participateY + searchRadius))
-        return false
+        return "'Participate' button not found in Arena"
     Sleep(Random(1000, 2000))
 
     ; --- 3. Battle (default top opponent) ---
@@ -498,7 +498,7 @@ Step4_FleetArena() {
     if (!WaitForAndClickImage(battleImage, 5000, 1500,
                               battleX - searchRadius, battleY - searchRadius,
                               battleX + searchRadius, battleY + searchRadius))
-        return false
+        return "'Battle' button not found (default opponent)"
     Sleep(Random(1000, 2000))
 
     ; --- 4. Fight (deploy + start) ---
@@ -506,7 +506,7 @@ Step4_FleetArena() {
     if (!WaitForAndClickImage(fightImage, 8000, 2000,
                               fightX - searchRadius, fightY - searchRadius,
                               fightX + searchRadius, fightY + searchRadius))
-        return false
+        return "'Fight' button not found"
     Sleep(Random(1000, 2000))
 
     ; --- 5. Enable auto-battle if needed ---
@@ -535,7 +535,7 @@ Step4_FleetArena() {
     ClickPos(defeatX + Random(-100, 100), defeatY + Random(-60, 60), 1000)
     Sleep(Random(1000, 2000))
 
-    return true
+    return ""
 }
 
 ; ============================================
@@ -545,8 +545,10 @@ RunSequence() {
     NotifyDiscord("🚀 Starting", "Bot launched, beginning sequence")
 
     ; --- STEP 0: Launch the game ---
+    ;  No screenshot/Discord report here: if the game won't launch there's
+    ;  nothing useful on screen, so just kill the script.
     if (!LaunchGame())
-        StepFailed(0, "Unable to launch the game")
+        ExitApp()
     NotifyDiscord("✅ Completed", "Step 0 - Launch the game executed successfully")
 
     ; --- STEP 1: Dismiss startup news / pop-ups + claim daily login rewards ---
@@ -554,18 +556,23 @@ RunSequence() {
     NotifyDiscord("✅ Completed", "Step 1 - Dismiss startup news and claim daily login rewards executed successfully")
 
     ; --- STEP 2: Open Shipments shop and buy recurring items ---
-    if (!Step2_BuyShipments())
-        StepFailed(2, "Shipments icon not found on main menu (color mismatch)")
+    ;  Step functions return "" on success, or a specific reason string
+    ;  naming the sub-task that failed.
+    reason := Step2_BuyShipments()
+    if (reason != "")
+        StepFailed(2, reason)
     NotifyDiscord("✅ Completed", "Step 2 - Buy Chargements shop recurring items executed successfully")
 
     ; --- STEP 3: Open Shop and claim the daily free reward ---
-    if (!Step3_GetFreeReward())
-        StepFailed(3, "Shop icon or free reward button not found")
+    reason := Step3_GetFreeReward()
+    if (reason != "")
+        StepFailed(3, reason)
     NotifyDiscord("✅ Completed", "Step 3 - Claim daily free reward from Shop executed successfully")
 
     ; --- STEP 4: Fleet Arena auto-battle ---
-    if (!Step4_FleetArena())
-        StepFailed(4, "Fleet arena flow failed (nav, battle, auto, or defeat detection)")
+    reason := Step4_FleetArena()
+    if (reason != "")
+        StepFailed(4, reason)
     NotifyDiscord("✅ Completed", "Step 4 - Fleet Arena auto-battle executed successfully")
 
     ExitApp()
