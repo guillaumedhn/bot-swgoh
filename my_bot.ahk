@@ -30,6 +30,7 @@ webhookUrl      := config.Get("WEBHOOK_URL", "")
 launchTimeout   := Integer(config.Get("LAUNCH_TIMEOUT", "60"))
 colorTolerance  := Integer(config.Get("COLOR_TOLERANCE", "15"))
 autoMode        := (config.Get("AUTO_MODE", "false") = "true")
+showClicks      := (config.Get("SHOW_CLICKS", "false") = "true")
 
 ; Basic checks
 if (gamePath = "" || windowTitle = "") {
@@ -140,7 +141,27 @@ NotifyDiscord(title, message, color := 0x22c55e) {
     }
 }
 
+;  Briefly flash a red circle at (x, y) so you can watch where the bot clicks.
+;  Off by default; enable with SHOW_CLICKS=true in my_bot.env. The marker is
+;  click-through (WS_EX_TRANSPARENT) so it never intercepts the actual click,
+;  and self-destroys after a short delay.
+FlashClick(x, y) {
+    global showClicks
+    if (!showClicks)
+        return
+
+    size := 36
+    marker := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
+    marker.BackColor := "Red"
+    marker.Show("NoActivate x" (x - size // 2) " y" (y - size // 2)
+              . " w" size " h" size)
+    WinSetRegion("0-0 W" size " H" size " E", marker.Hwnd)  ; ellipse = circle
+    WinSetTransparent(160, marker)
+    SetTimer(() => marker.Destroy(), -250)
+}
+
 ClickPos(x, y, pause := 300) {
+    FlashClick(x, y)
     Click(x, y)
     Sleep(pause)
 }
@@ -384,15 +405,16 @@ Step2_BuyShipments() {
     Sleep(Random(1000, 2000))
 
     ; --- Buy items ---
-    ; The 4 slots where money.png is expected to appear when the item is buyable.
+    ; The 4 shipment slots, each verified by its own sentinel color (steps.txt)
+    ; before clicking. The slots have visibly different price icons, so a single
+    ; shared image won't match all 4. A slot whose color doesn't match (already
+    ; bought, locked, different currency...) is skipped.
     itemPositions := [
-        { x: 1437, y: 849 },
-        { x: 713,  y: 849 },
-        { x: 1070, y: 859 },
-        { x: 2888, y: 497 },
+        { x: 1437, y: 849, color: 0xFEDD70 },
+        { x: 713,  y: 849, color: 0xFDD571 },
+        { x: 1070, y: 859, color: 0x201D18 },
+        { x: 2888, y: 497, color: 0xFFE778 },
     ]
-    itemImage    := "images\money.png"
-    searchRadius := 60
 
     ; The confirm button is verified by its sentinel color (see steps.txt):
     ; wait for that color to appear at the confirm position, then click it.
@@ -401,10 +423,9 @@ Step2_BuyShipments() {
     confirmColor := 0x43241B
 
     for pos in itemPositions {
-        if (!WaitForAndClickImage(itemImage, 2000, 700,
-                                  pos.x - searchRadius, pos.y - searchRadius,
-                                  pos.x + searchRadius, pos.y + searchRadius))
+        if (!CompareColor(PixelGetColor(pos.x, pos.y), pos.color, colorTolerance))
             continue
+        ClickPos(pos.x, pos.y, 700)
         Sleep(Random(1000, 2000))
 
         if (WaitForColor(confirmX, confirmY, confirmColor, 3000))
