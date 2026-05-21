@@ -10,7 +10,7 @@ items pos:
   x:1437 y:849 color:0xFEDD70
   x:713 y:849 color:0xFDD571
   x:1070 y:859 color:0x201D18
-  x:2888 y:497 color:0xFFE778
+  x:2886 y:481 color:0x36251C
 
   confirm pos: x:1819 y:909 color:0x43241B
 
