@@ -336,12 +336,14 @@ Step1_DismissNews() {
     maxCloseAttempts  := 20
     maxConsecutiveMiss := 3
     consecutiveMiss   := 0
+    closedAny         := false
 
     Loop maxCloseAttempts {
         if (WaitForAndClickImage(closeImage, 800, 500,
                                  closeBtnX - searchRadius, closeBtnY - searchRadius,
                                  closeBtnX + searchRadius, closeBtnY + searchRadius)) {
             consecutiveMiss := 0
+            closedAny := true
             Sleep(retryPause)
             continue
         }
@@ -349,7 +351,10 @@ Step1_DismissNews() {
         consecutiveMiss += 1
         if (consecutiveMiss >= maxConsecutiveMiss)
             break
-        SendKey("{Escape}", retryPause)
+        ; Only fall back to Escape if we've actually closed something already;
+        ; otherwise there's no popup and a stray Escape could disrupt the menu.
+        if (closedAny)
+            SendKey("{Escape}", retryPause)
     }
 }
 
@@ -360,12 +365,10 @@ Step1_DismissNews() {
 ;     click it.
 ;  2. For each of the 4 item slots: ImageSearch for the shared money.png
 ;     inside a small box around the slot's known position. If found → click
-;     → wait for confirm.png → click confirm. If the price icon isn't there
-;     (already bought, locked, ...), skip silently.
 ;
 ;  Reference images (place under images/ in the script dir):
 ;    - images/money.png   : the price/buy icon shared by all 4 slots
-;    - images/confirm.png : the shared purchase confirmation button
+
 Step2_BuyShipments() {
     global colorTolerance
 
@@ -391,10 +394,11 @@ Step2_BuyShipments() {
     itemImage    := "images\money.png"
     searchRadius := 60
 
-    ; The confirm popup shows the same money icon next to the confirm button,
-    ; so we ImageSearch money.png around the confirm position too.
-    confirmX := 1819
-    confirmY := 909
+    ; The confirm button is verified by its sentinel color (see steps.txt):
+    ; wait for that color to appear at the confirm position, then click it.
+    confirmX     := 1819
+    confirmY     := 909
+    confirmColor := 0x43241B
 
     for pos in itemPositions {
         if (!WaitForAndClickImage(itemImage, 2000, 700,
@@ -403,9 +407,8 @@ Step2_BuyShipments() {
             continue
         Sleep(Random(1000, 2000))
 
-        WaitForAndClickImage(itemImage, 3000, 1000,
-                             confirmX - searchRadius, confirmY - searchRadius,
-                             confirmX + searchRadius, confirmY + searchRadius)
+        if (WaitForColor(confirmX, confirmY, confirmColor, 3000))
+            ClickPos(confirmX, confirmY, 1000)
         Sleep(Random(1500, 2000))
     }
 
