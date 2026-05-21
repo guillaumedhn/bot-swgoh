@@ -413,7 +413,7 @@ Step2_BuyShipments() {
         { x: 1437, y: 849 },
         { x: 713,  y: 849 },
         { x: 1070, y: 859 },
-        { x: 2888, y: 497 },
+        { x: 2886, y: 481 },
     ]
     itemImage    := "images\money.png"
     searchRadius := 60
